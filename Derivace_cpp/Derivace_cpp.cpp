@@ -297,20 +297,24 @@ Node* Derivate(Node* node) {
 		//X.right.right = node.right
 		if (node->token.GetOperator() == Divide) {
 			newNode = NewNode(OperatorToken("/"));
+			//left
 			Node* newLeftNode = NewNode(OperatorToken("-"));
+			//A' * B
 			Node* newLeftExpr = NewNode(OperatorToken("*"));
 			Node* newLeftLeftNode = Derivate(node->leftChild);
 			Node* newLeftRightNode = node->rightChild;
 			newLeftExpr->leftChild = newLeftLeftNode;
 			newLeftExpr->rightChild = newLeftRightNode;
+			//A * B'
 			Node* newRightExpr = NewNode(OperatorToken("*"));
 			Node* newRightLeftNode = node->leftChild;
 			Node* newRightRightNode = Derivate(node->rightChild);
 			newRightExpr->leftChild = newRightLeftNode;
 			newRightExpr->rightChild = newRightRightNode;
-			newLeftNode->leftChild = Derivate(node->leftChild);
-			newLeftNode->rightChild = node->rightChild;
 
+			newLeftNode->leftChild = newLeftExpr;
+			newLeftNode->rightChild = newRightExpr;
+			//right
 			Node* newRightNode = NewNode(OperatorToken("*"));
 			newRightNode->leftChild = node->rightChild;
 			newRightNode->rightChild = node->rightChild;
@@ -540,18 +544,18 @@ int main()
 		//postfix -> tree
 		Node* root = ConstructTree(output);
 		//pre-derivation simplification
-		int depth = GetTreeDepth(root);
+		/*int depth = GetTreeDepth(root);
 		for (int i = 0; i < depth; i++)
 		{
 			root = Simplify(root);
-		}
+		}*/
 
 		//tree -> derivative tree
 		Node* resultRoot = Derivate(root);
 
 		//simplification
 		Node* simplified = resultRoot;
-		depth = GetTreeDepth(simplified);
+		int depth = GetTreeDepth(simplified);
 		for (int i = 0; i < depth; i++)
 		{
 			simplified = Simplify(simplified);
