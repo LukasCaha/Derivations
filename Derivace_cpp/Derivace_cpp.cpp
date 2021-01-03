@@ -473,6 +473,50 @@ int GetTreeDepth(Node* node) {
 		return 1;
 }
 
+bool CheckForErrors(std::vector<Token>& tokens) {
+	//if two same typed tokens in row => error
+	//if other token => error
+	//if first type is 0 (=operator) => error
+	int lastTokenType = 0;
+	int paranthesisDepth = 0;
+	std::vector<Token>::iterator it = tokens.begin();
+	for (; it != tokens.end(); it++)
+	{
+		//two operators next to each other | two numbers nex to each other | other tokenTypes
+		if (it->GetType() == lastTokenType)
+			return false;
+		lastTokenType = it->GetType();
+		//other token present
+		if (it->GetType() == 4) {
+			return false;
+		}
+		//count '('
+		if (it->GetType() == 2) {
+			paranthesisDepth++;
+		}
+		//count ')'
+		if (it->GetType() == 3) {
+			paranthesisDepth--;
+		}
+		//more ')' then '('
+		if (paranthesisDepth < 0)
+			return false;
+		//paranthesis next to operator '+)'
+		if ((it->GetType() == 2 || it->GetType() == 3) && lastTokenType == 0)
+			return false;
+		//paranthesis next to operator '(+'
+		if ((lastTokenType == 2 || lastTokenType == 3) && it->GetType() == 0)
+			return false;
+	}
+	//more '(' then ')'
+	if (paranthesisDepth > 0)
+		return false;
+	//if last token is operator => error
+	if (lastTokenType == 0)
+		return false;
+	return true;
+}
+
 int main()
 {
 
@@ -483,6 +527,11 @@ int main()
 		//input -> infix
 		vector<Token> tokens;
 		ExtractTokens(line, tokens);
+		bool ok = CheckForErrors(tokens);
+		if (!ok) {
+			cout << "Input error"<<endl;
+			continue;
+		}
 
 		//infix -> postfix
 		queue<Token> output;
@@ -490,13 +539,19 @@ int main()
 
 		//postfix -> tree
 		Node* root = ConstructTree(output);
+		//pre-derivation simplification
+		int depth = GetTreeDepth(root);
+		for (int i = 0; i < depth; i++)
+		{
+			root = Simplify(root);
+		}
 
 		//tree -> derivative tree
 		Node* resultRoot = Derivate(root);
 
 		//simplification
 		Node* simplified = resultRoot;
-		int depth = GetTreeDepth(simplified);
+		depth = GetTreeDepth(simplified);
 		for (int i = 0; i < depth; i++)
 		{
 			simplified = Simplify(simplified);
