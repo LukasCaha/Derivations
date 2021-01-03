@@ -14,7 +14,7 @@
 
 using namespace std;
 
-typedef struct Node
+struct Node
 {
 public:
 	Token token;
@@ -25,7 +25,7 @@ bool IsOperator(string token) {
 	char operators[] = { '+', '-', '*', '/' };
 	if (token.length() == 1)
 	{
-		for (int i = 0; i < strlen(operators); i++)
+		for (int i = 0; i < sizeof(operators); i++)
 		{
 			if (token[0] == operators[i]) {
 				return true;
@@ -58,7 +58,7 @@ bool IsParenthesis(string token) {
 	char brackets[] = { '(', ')' };
 	if (token.length() == 1)
 	{
-		for (int i = 0; i < strlen(brackets); i++)
+		for (int i = 0; i < sizeof(brackets); i++)
 		{
 			if (token[0] == brackets[i]) {
 				return true;
@@ -73,6 +73,7 @@ char TypeToOperator(int type) {
 	if (type == 1) return '-';
 	if (type == 2) return '*';
 	if (type == 3) return '/';
+	return '?';
 }
 
 void ShuntingYard(std::vector<Token>& tokens, std::queue<Token>& output)
@@ -324,40 +325,64 @@ Node* Derivate(Node* node) {
 
 Node* Simplify(Node* node) {
 	Node* newNode;
-	if (node->token.GetType() == Number) {
-		newNode = node;
-		return node;
+	if (node->token.GetType() == Operator && node->leftChild->token.GetType() == Number && node->rightChild->token.GetType() == Number) {
+		//simplify const
+		if (node->leftChild->token.value != -1 && node->rightChild->token.value != -1) {
+			double left = node->leftChild->token.value;
+			double right = node->rightChild->token.value;
+			switch (node->token.GetOperator())
+			{
+			case Plus:
+				return NewNode(NumberToken(to_string(left + right)));
+			case Minus:
+				return NewNode(NumberToken(to_string(left - right)));
+			case Multiply:
+				return NewNode(NumberToken(to_string(left * right)));
+			case Divide:
+				return NewNode(NumberToken(to_string(left / right)));
+			default:
+				break;
+			}
+		}
+
 	}
 	if (node->token.GetType() == Operator) {
 		//PLUS
 		//if one of simplified operands are 0 => result is 0
 		if (node->token.GetOperator() == Plus) {
 			newNode = NewNode(OperatorToken("+"));
-			newNode->leftChild = Simplify(node->leftChild);
-			newNode->rightChild = Simplify(node->rightChild);
-			if (newNode->leftChild->token.GetType() == Number) {
-				if (newNode->leftChild->token.value == 0) {
-					newNode = newNode->rightChild;
+			Node* left = Simplify(node->leftChild);
+			Node* right = Simplify(node->rightChild);
+			if (left->token.GetType() == Number) {
+				if (left->token.value == 0) {
+					newNode = right;
+					return newNode;
 				}
 			}
-			if (newNode->rightChild->token.GetType() == Number) {
-				if (newNode->rightChild->token.value == 0) {
-					newNode = newNode->leftChild;
+			if (right->token.GetType() == Number) {
+				if (right->token.value == 0) {
+					newNode = left;
+					return newNode;
 				}
 			}
+			newNode->leftChild = left;
+			newNode->rightChild = right;
 			return newNode;
 		}
 		//MINUS
 		//if simplified rightchild is 0 => result is 0
 		if (node->token.GetOperator() == Minus) {
 			newNode = NewNode(OperatorToken("-"));
-			newNode->leftChild = Simplify(node->leftChild);
-			newNode->rightChild = Simplify(node->rightChild);
-			if (newNode->rightChild->token.GetType() == Number) {
-				if (newNode->rightChild->token.value == 0) {
-					newNode = newNode->leftChild;
+			Node* left = Simplify(node->leftChild);
+			Node* right = Simplify(node->rightChild);
+			if (right->token.GetType() == Number) {
+				if (right->token.value == 0) {
+					newNode = left;
+					return newNode;
 				}
 			}
+			newNode->leftChild = left;
+			newNode->rightChild = right;
 			return newNode;
 		}
 		//MULTIPLY
@@ -365,46 +390,56 @@ Node* Simplify(Node* node) {
 		//1 multiplication => result other child
 		if (node->token.GetOperator() == Multiply) {
 			newNode = NewNode(OperatorToken("*"));
-			newNode->leftChild = Simplify(node->leftChild);
-			newNode->rightChild = Simplify(node->rightChild);
-			if (newNode->leftChild->token.GetType() == Number) {
-				if (newNode->leftChild->token.value == 0) {
+			Node* left = Simplify(node->leftChild);
+			Node* right = Simplify(node->rightChild);
+			if (left->token.GetType() == Number) {
+				if (left->token.value == 0) {
 					newNode = NewNode(NumberToken("0"));
+					return newNode;
 				}
 			}
-			if (newNode->rightChild->token.GetType() == Number) {
-				if (newNode->rightChild->token.value == 0) {
+			if (right->token.GetType() == Number) {
+				if (right->token.value == 0) {
 					newNode = NewNode(NumberToken("0"));
+					return newNode;
 				}
 			}
-			if (newNode->leftChild->token.GetType() == Number) {
-				if (newNode->leftChild->token.value == 1) {
-					newNode = newNode->rightChild;
+			if (left->token.GetType() == Number) {
+				if (left->token.value == 1) {
+					newNode = right;
+					return newNode;
 				}
 			}
-			if (newNode->rightChild->token.GetType() == Number) {
-				if (newNode->rightChild->token.value == 1) {
-					newNode = newNode->leftChild;
+			if (right->token.GetType() == Number) {
+				if (right->token.value == 1) {
+					newNode = left;
+					return newNode;
 				}
 			}
+			newNode->leftChild = left;
+			newNode->rightChild = right;
 
 			return newNode;
 		}
 		//DIVIDE
 		if (node->token.GetOperator() == Divide) {
 			newNode = NewNode(OperatorToken("/"));
-			newNode->leftChild = Simplify(node->leftChild);
-			newNode->rightChild = Simplify(node->rightChild);
-			if (newNode->leftChild->token.GetType() == Number) {
-				if (newNode->leftChild->token.value == 0) {
+			Node* left = Simplify(node->leftChild);
+			Node* right = Simplify(node->rightChild);
+			if (left->token.GetType() == Number) {
+				if (left->token.value == 0) {
 					newNode = NewNode(NumberToken("0"));
+					return newNode;
 				}
 			}
-			if (newNode->rightChild->token.GetType() == Number) {
-				if (newNode->rightChild->token.value == 1) {
-					newNode = newNode->leftChild;
+			if (right->token.GetType() == Number) {
+				if (right->token.value == 1) {
+					newNode = left;
+					return newNode;
 				}
 			}
+			newNode->leftChild = left;
+			newNode->rightChild = right;
 			return newNode;
 		}
 	}
@@ -417,7 +452,7 @@ void TreeOut(Node* node) {
 	{
 		cout << "(";
 		TreeOut(node->leftChild);
-		cout <<" "<< TypeToOperator( node->token.GetOperator())<<" ";
+		cout << " " << TypeToOperator(node->token.GetOperator()) << " ";
 		TreeOut(node->rightChild);
 		cout << ")";
 	}
@@ -431,79 +466,46 @@ void TreeOut(Node* node) {
 	}
 }
 
+int GetTreeDepth(Node* node) {
+	if (node->token.tokenType != Number)
+		return max(GetTreeDepth(node->leftChild), GetTreeDepth(node->rightChild)) + 1;
+	else
+		return 1;
+}
+
 int main()
 {
+
 	std::ifstream file("tests.txt");
 
 	string line;
 	while (std::getline(file, line)) {
-		if (line[0] == 'c') break;
-		//cout << line << endl;
+		//input -> infix
 		vector<Token> tokens;
 		ExtractTokens(line, tokens);
 
-		/*TEST OUTPUT*/
-		/*std::vector<Token>::iterator it = tokens.begin();
-		for (; it != tokens.end(); it++)
-		{
-			if (it->GetType() == 0)
-				cout << TypeToOperator(it->operatorType) << " ";
-			else {
-				if (it->value == -1)
-					cout << "x" << " ";
-				else
-					cout << it->value << " ";
-			}
-		}
-		cout << endl;*/
-		/*TEST OUTPUT END*/
-
-		//shunting yard
+		//infix -> postfix
 		queue<Token> output;
 		ShuntingYard(tokens, output);
 
-		/*TEST OUTPUT backwards postfix*/
-		/*while (output.size() > 0) {
-			if (output.top().GetType() == 0)
-				cout << TypeToOperator(output.top().operatorType) << " ";
-			else if (output.top().GetType() == 1) {
-				if (output.top().value == -1)
-					cout << "x" << " ";
-				else
-					cout << output.top().value << " ";
-			}
-			else {
-				cout << "|";
-			}
-			output.pop();
-		}
-		cout << endl << endl;*/
-		/*TEST OUTPUT END*/
-
 		//postfix -> tree
-		//start from end
-		//root = last token
-		//right child = next
-		//if operator recursively
-		//else
-		/*Node root = Node();
-		root.token = output.top();
-		output.pop();
-		root.parent = NULL;
-
-		FillNode(root, output);*/
-
 		Node* root = ConstructTree(output);
-		/*cout << " type:" << root->token.GetType() << endl;
-		cout << " type:" << root->leftChild->token.GetType() << endl;
-		cout << " type:" << root->rightChild->token.GetType() << endl;*/
-	
+
+		//tree -> derivative tree
 		Node* resultRoot = Derivate(root);
-		TreeOut(resultRoot);
+
+		//simplification
+		Node* simplified = resultRoot;
+		int depth = GetTreeDepth(simplified);
+		for (int i = 0; i < depth; i++)
+		{
+			simplified = Simplify(simplified);
+		}
+
+
+		//output
+		TreeOut(simplified);
 		cout << endl;
-		//Node* simplifiedResultRoot = Simplify(resultRoot);
-		//TreeOut(simplifiedResultRoot);
-		//cout << endl;
 	}
 }
 
