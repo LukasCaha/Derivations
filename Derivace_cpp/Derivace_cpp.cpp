@@ -10,10 +10,16 @@
 #include <stack>
 
 #include "Token.h"
-#include "Node.h"
 #include "Derivace_cpp.h"
 
 using namespace std;
+
+typedef struct Node
+{
+public:
+	Token token;
+	Node* leftChild, * rightChild, * parent;
+};
 
 bool IsOperator(string token) {
 	char operators[] = { '+', '-', '*', '/' };
@@ -69,7 +75,7 @@ char TypeToOperator(int type) {
 	if (type == 3) return '/';
 }
 
-void ShuntingYard(std::vector<Token>& tokens, std::stack<Token>& output)
+void ShuntingYard(std::vector<Token>& tokens, std::queue<Token>& output)
 {
 	stack<Token> operatorStack;
 	std::vector<Token>::iterator iterator = tokens.begin();
@@ -148,12 +154,85 @@ void ExtractTokens(std::string& line, std::vector<Token>& tokens)
 	}
 }
 
+Node* NewNode(Token t)
+{
+	Node* temp = new Node;
+	temp->parent = NULL;
+	temp->leftChild = NULL;
+	temp->rightChild = NULL;
+	temp->token = t;
+	return temp;
+};
+
+Node* ConstructTree(std::queue<Token>& output)
+{
+	stack<Node*> st;
+	Node* t, * t1, * t2;
+
+	// Traverse through every character of
+	// input expression
+	int cacheOutputSize = output.size();
+	//cout << "size:" << cacheOutputSize << "\t\t";
+	for (int i = 0; i < cacheOutputSize; i++)
+	{
+		Token current = output.front();
+		output.pop();
+		// If operand, simply push into stack
+		if (current.GetType() == Number)
+		{
+			//cout << current.value << " ";
+			t = NewNode(current);
+			st.push(t);
+		}
+		else if (current.GetType() == Operator) // operator
+		{
+			//cout << TypeToOperator(current.GetOperator()) << " ";
+			t = NewNode(current);
+
+			if (st.size() > 1) {
+				// Pop two top nodes
+				t1 = st.top(); // Store top
+				st.pop();      // Remove top
+				t2 = st.top();
+				st.pop();
+
+				//  make them children
+				t->rightChild = t1;
+				t->leftChild = t2;
+
+				// Add this subexpression to stack
+				st.push(t);
+			}
+			else {
+				//cout << "error";
+			}
+		}
+		else {
+			//cout << "error3";
+		}
+	}
+
+	//  only element will be root of expression
+	// tree
+	if (st.size() > 0) {
+		t = st.top();
+		st.pop();
+		return t;
+	}
+	else {
+		//cout << "error2";
+		return NULL;
+	}
+
+}
+
 int main()
 {
 	std::ifstream file("tests.txt");
 
 	string line;
 	while (std::getline(file, line)) {
+		if (line[0] == 'c') break;
 		//cout << line << endl;
 		vector<Token> tokens;
 		ExtractTokens(line, tokens);
@@ -175,15 +254,15 @@ int main()
 		/*TEST OUTPUT END*/
 
 		//shunting yard
-		stack<Token> output;
+		queue<Token> output;
 		ShuntingYard(tokens, output);
 
 		/*TEST OUTPUT backwards postfix*/
-		while (output.size() > 0) {
-			if(output.top().GetType() == 0)
+		/*while (output.size() > 0) {
+			if (output.top().GetType() == 0)
 				cout << TypeToOperator(output.top().operatorType) << " ";
 			else if (output.top().GetType() == 1) {
-				if(output.top().value == -1)
+				if (output.top().value == -1)
 					cout << "x" << " ";
 				else
 					cout << output.top().value << " ";
@@ -193,7 +272,7 @@ int main()
 			}
 			output.pop();
 		}
-		cout << endl << endl;
+		cout << endl << endl;*/
 		/*TEST OUTPUT END*/
 
 		//postfix -> tree
@@ -208,20 +287,16 @@ int main()
 		root.parent = NULL;
 
 		FillNode(root, output);*/
+
+		Node* root = ConstructTree(output);
+		/*cout << " type:" << root->token.GetType() << endl;
+		cout << " type:" << root->leftChild->token.GetType() << endl;
+		cout << " type:" << root->rightChild->token.GetType() << endl;*/
 	}
 }
 
-void FillNode(Node& current, std::stack<Token>& output)
-{
-	Node *newNode = (Node*)malloc(sizeof(Node));
-	current.rightChild = newNode;
-	current.rightChild->parent = &current;
-	current.rightChild->token = output.top();
-	output.pop();
-	if (current.token.GetType() == Operator) {
-		FillNode(*current.rightChild, output);
-		FillNode(*current.leftChild, output);
-	}
-}
+
+
+
 
 

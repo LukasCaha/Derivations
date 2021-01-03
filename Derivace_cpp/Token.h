@@ -25,6 +25,9 @@ public:
 	int GetType() {
 		return tokenType;
 	}
+	int GetOperator() {
+		return operatorType;
+	}
 
 	int GetPriority() {
 		switch (operatorType)
