@@ -9,6 +9,8 @@ enum OperatorType { Plus, Minus, Multiply, Divide };
 class Token
 {
 public:
+	OperatorType operatorType;
+	double value = 0;
 	TokenType tokenType;
 	Token() { tokenType = Other; }
 	Token(std::string _tokenType) {
@@ -20,22 +22,62 @@ public:
 			tokenType = RightParenthesis;
 		}
 	}
+	int GetType() {
+		return tokenType;
+	}
+
+	int GetPriority() {
+		switch (operatorType)
+		{
+		case Plus:
+			return 0;
+		case Minus:
+			return 0;
+		case Multiply:
+			return 1;
+		case Divide:
+			return 1;
+		default:
+			break;
+		}
+	}
 };
 
 class NumberToken : public Token
 {
 public:
-	double value;
+	bool isX;
 	NumberToken(std::string _value) {
 		tokenType = Number;
-		value = std::stod(_value);
+		if (_value == "x") {
+			value = -1;
+			isX = true;
+		}
+		else {
+			value = std::stod(_value);
+			isX = false;
+		}
+	}
+	int GetPriority() {
+		switch (operatorType)
+		{
+		case Plus:
+			return 0;
+		case Minus:
+			return 0;
+		case Multiply:
+			return 1;
+		case Divide:
+			return 1;
+		default:
+			break;
+		}
 	}
 };
 
 class OperatorToken : public Token
 {
 public:
-	OperatorType operatorType;
 	OperatorToken(std::string _operatorType) {
 		tokenType = Operator;
 		switch (_operatorType[0])
@@ -56,6 +98,21 @@ public:
 			break;
 		}
 		
+	}
+	int GetPriority() {
+		switch (operatorType)
+		{
+		case Plus:
+			return 0;
+		case Minus:
+			return 0;
+		case Multiply:
+			return 1;
+		case Divide:
+			return 1;
+		default:
+			break;
+		}
 	}
 };
 
