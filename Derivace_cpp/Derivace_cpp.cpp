@@ -226,6 +226,211 @@ Node* ConstructTree(std::queue<Token>& output)
 
 }
 
+Node* Derivate(Node* node) {
+
+	Node* newNode;
+	if (node->token.GetType() == Number) {
+		//CONSTANT
+		if (node->token.value != -1) {
+			newNode = NewNode(NumberToken("0"));
+			return newNode;
+		}
+		//VARIABLE X
+		if (node->token.value == -1) {
+			newNode = NewNode(NumberToken("1"));
+			return newNode;
+		}
+	}
+	if (node->token.GetType() == Operator) {
+		//PLUS
+		//return node X with + OP
+		//X.left = Derivate(node.left)
+		//X.right = Derivate(node.right)
+		if (node->token.GetOperator() == Plus) {
+			newNode = NewNode(OperatorToken("+"));
+			newNode->leftChild = Derivate(node->leftChild);
+			newNode->rightChild = Derivate(node->rightChild);
+			return newNode;
+		}
+		//MINUS
+		//return node X with - OP
+		//X.left = Derivate(node.left)
+		//X.right = Derivate(node.right)
+		if (node->token.GetOperator() == Minus) {
+			newNode = NewNode(OperatorToken("-"));
+			newNode->leftChild = Derivate(node->leftChild);
+			newNode->rightChild = Derivate(node->rightChild);
+			return newNode;
+		}
+		//MULTIPLY
+		//return node X with + OP
+		//X.left = * OP
+		//X.right = * OP
+		//X.left.left = Derivate(node.left)
+		//X.left.right = node.right
+		//X.right.left = node.left
+		//X.right.right = Derivate(node.right)
+		if (node->token.GetOperator() == Multiply) {
+			newNode = NewNode(OperatorToken("+"));
+			Node* newLeftNode = NewNode(OperatorToken("*"));
+			newLeftNode->leftChild = Derivate(node->leftChild);
+			newLeftNode->rightChild = node->rightChild;
+			newNode->leftChild = newLeftNode;
+			Node* newRightNode = NewNode(OperatorToken("*"));
+			newRightNode->leftChild = node->leftChild;
+			newRightNode->rightChild = Derivate(node->rightChild);
+			newNode->rightChild = newRightNode;
+			return newNode;
+		}
+		//DIVIDE
+		//return node X with / OP
+		//X.left = Y with - OP
+		//Y.left = * OP
+		//Y.right = * OP
+		//Y.left.left = Derivate(node.left)
+		//Y.left.right = node.right
+		//Y.right.left = node.left
+		//Y.right.right = Derivate(node.right)
+		//X.right with * OP
+		//X.right.left = node.right
+		//X.right.right = node.right
+		if (node->token.GetOperator() == Divide) {
+			newNode = NewNode(OperatorToken("/"));
+			Node* newLeftNode = NewNode(OperatorToken("-"));
+			Node* newLeftExpr = NewNode(OperatorToken("*"));
+			Node* newLeftLeftNode = Derivate(node->leftChild);
+			Node* newLeftRightNode = node->rightChild;
+			newLeftExpr->leftChild = newLeftLeftNode;
+			newLeftExpr->rightChild = newLeftRightNode;
+			Node* newRightExpr = NewNode(OperatorToken("*"));
+			Node* newRightLeftNode = node->leftChild;
+			Node* newRightRightNode = Derivate(node->rightChild);
+			newRightExpr->leftChild = newRightLeftNode;
+			newRightExpr->rightChild = newRightRightNode;
+			newLeftNode->leftChild = Derivate(node->leftChild);
+			newLeftNode->rightChild = node->rightChild;
+
+			Node* newRightNode = NewNode(OperatorToken("*"));
+			newRightNode->leftChild = node->rightChild;
+			newRightNode->rightChild = node->rightChild;
+
+			newNode->leftChild = newLeftNode;
+			newNode->rightChild = newRightNode;
+			return newNode;
+		}
+	}
+	return node;
+}
+
+Node* Simplify(Node* node) {
+	Node* newNode;
+	if (node->token.GetType() == Number) {
+		newNode = node;
+		return node;
+	}
+	if (node->token.GetType() == Operator) {
+		//PLUS
+		//if one of simplified operands are 0 => result is 0
+		if (node->token.GetOperator() == Plus) {
+			newNode = NewNode(OperatorToken("+"));
+			newNode->leftChild = Simplify(node->leftChild);
+			newNode->rightChild = Simplify(node->rightChild);
+			if (newNode->leftChild->token.GetType() == Number) {
+				if (newNode->leftChild->token.value == 0) {
+					newNode = newNode->rightChild;
+				}
+			}
+			if (newNode->rightChild->token.GetType() == Number) {
+				if (newNode->rightChild->token.value == 0) {
+					newNode = newNode->leftChild;
+				}
+			}
+			return newNode;
+		}
+		//MINUS
+		//if simplified rightchild is 0 => result is 0
+		if (node->token.GetOperator() == Minus) {
+			newNode = NewNode(OperatorToken("-"));
+			newNode->leftChild = Simplify(node->leftChild);
+			newNode->rightChild = Simplify(node->rightChild);
+			if (newNode->rightChild->token.GetType() == Number) {
+				if (newNode->rightChild->token.value == 0) {
+					newNode = newNode->leftChild;
+				}
+			}
+			return newNode;
+		}
+		//MULTIPLY
+		//0 multiplication => result 0
+		//1 multiplication => result other child
+		if (node->token.GetOperator() == Multiply) {
+			newNode = NewNode(OperatorToken("*"));
+			newNode->leftChild = Simplify(node->leftChild);
+			newNode->rightChild = Simplify(node->rightChild);
+			if (newNode->leftChild->token.GetType() == Number) {
+				if (newNode->leftChild->token.value == 0) {
+					newNode = NewNode(NumberToken("0"));
+				}
+			}
+			if (newNode->rightChild->token.GetType() == Number) {
+				if (newNode->rightChild->token.value == 0) {
+					newNode = NewNode(NumberToken("0"));
+				}
+			}
+			if (newNode->leftChild->token.GetType() == Number) {
+				if (newNode->leftChild->token.value == 1) {
+					newNode = newNode->rightChild;
+				}
+			}
+			if (newNode->rightChild->token.GetType() == Number) {
+				if (newNode->rightChild->token.value == 1) {
+					newNode = newNode->leftChild;
+				}
+			}
+
+			return newNode;
+		}
+		//DIVIDE
+		if (node->token.GetOperator() == Divide) {
+			newNode = NewNode(OperatorToken("/"));
+			newNode->leftChild = Simplify(node->leftChild);
+			newNode->rightChild = Simplify(node->rightChild);
+			if (newNode->leftChild->token.GetType() == Number) {
+				if (newNode->leftChild->token.value == 0) {
+					newNode = NewNode(NumberToken("0"));
+				}
+			}
+			if (newNode->rightChild->token.GetType() == Number) {
+				if (newNode->rightChild->token.value == 1) {
+					newNode = newNode->leftChild;
+				}
+			}
+			return newNode;
+		}
+	}
+	return node;
+}
+
+void TreeOut(Node* node) {
+	//cout << node->token.GetType()<<endl;
+	if (node->token.GetType() == Operator)
+	{
+		cout << "(";
+		TreeOut(node->leftChild);
+		cout <<" "<< TypeToOperator( node->token.GetOperator())<<" ";
+		TreeOut(node->rightChild);
+		cout << ")";
+	}
+	if (node->token.GetType() == Number) {
+		if (node->token.value == -1) {
+			cout << "x";
+		}
+		else {
+			cout << node->token.value;
+		}
+	}
+}
+
 int main()
 {
 	std::ifstream file("tests.txt");
@@ -292,8 +497,16 @@ int main()
 		/*cout << " type:" << root->token.GetType() << endl;
 		cout << " type:" << root->leftChild->token.GetType() << endl;
 		cout << " type:" << root->rightChild->token.GetType() << endl;*/
+	
+		Node* resultRoot = Derivate(root);
+		TreeOut(resultRoot);
+		cout << endl;
+		//Node* simplifiedResultRoot = Simplify(resultRoot);
+		//TreeOut(simplifiedResultRoot);
+		//cout << endl;
 	}
 }
+
 
 
 
