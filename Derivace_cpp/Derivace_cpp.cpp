@@ -524,7 +524,7 @@ bool CheckForErrors(std::vector<Token>& tokens) {
 int main()
 {
 	std::ifstream file("tests.txt");
-	cout << "Calculating derivatives" << nonExistentVar;
+	cout << "Calculating derivatives";
 	string line;
 	while (std::getline(file, line)) {
 		//input -> infix
